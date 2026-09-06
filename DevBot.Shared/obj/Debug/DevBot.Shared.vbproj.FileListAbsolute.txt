@@ -1,0 +1,5 @@
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Shared\bin\Debug\DevBot.Shared.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Shared\bin\Debug\DevBot.Shared.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Shared\obj\Debug\DevBot.Shared.vbprojResolveAssemblyReference.cache
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Shared\obj\Debug\DevBot.Shared.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Shared\obj\Debug\DevBot.Shared.pdb

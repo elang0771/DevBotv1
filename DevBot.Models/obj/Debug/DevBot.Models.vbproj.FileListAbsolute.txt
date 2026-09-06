@@ -1,0 +1,4 @@
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Models\bin\Debug\DevBot.Models.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Models\bin\Debug\DevBot.Models.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Models\obj\Debug\DevBot.Models.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Models\obj\Debug\DevBot.Models.pdb

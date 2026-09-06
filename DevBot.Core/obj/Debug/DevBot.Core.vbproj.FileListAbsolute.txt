@@ -1,0 +1,7 @@
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\bin\Debug\DevBot.Core.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\bin\Debug\DevBot.Core.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\bin\Debug\DevBot.Models.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\bin\Debug\DevBot.Models.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\obj\Debug\DevBot.Core.vbprojResolveAssemblyReference.cache
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\obj\Debug\DevBot.Core.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Core\obj\Debug\DevBot.Core.pdb

@@ -1,0 +1,15 @@
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.UI.exe
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.UI.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Core.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Models.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Shared.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Core.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Models.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\bin\Debug\DevBot.Shared.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\DevBot.UI.vbprojResolveAssemblyReference.cache
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\UcChat.resources
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\FrmMain.resources
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\Resources.resources
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\DevBot.UI.vbproj.GenerateResource.Cache
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\DevBot.UI.exe
+C:\Projects\visual studio 2015\DevBotv1\DevBot.UI\obj\Debug\DevBot.UI.pdb

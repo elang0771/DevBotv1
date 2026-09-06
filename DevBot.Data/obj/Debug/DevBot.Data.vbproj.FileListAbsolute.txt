@@ -1,0 +1,5 @@
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Data\bin\Debug\DevBot.Data.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Data\bin\Debug\DevBot.Data.pdb
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Data\obj\Debug\DevBot.Data.vbprojResolveAssemblyReference.cache
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Data\obj\Debug\DevBot.Data.dll
+C:\Projects\visual studio 2015\DevBotv1\DevBot.Data\obj\Debug\DevBot.Data.pdb
