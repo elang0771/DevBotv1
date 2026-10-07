@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WA Auto Test</string>
+    <string name="accessibility_service_name">WA Auto Send Test</string>
+    <string name="accessibility_service_description">Service test pribadi untuk menekan tombol Send di WhatsApp hanya setelah Test Send diaktifkan.</string>
+</resources>
