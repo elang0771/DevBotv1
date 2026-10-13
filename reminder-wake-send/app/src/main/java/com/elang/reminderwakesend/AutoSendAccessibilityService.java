@@ -199,7 +199,11 @@ public class AutoSendAccessibilityService extends AccessibilityService {
         String cls = safe(node.getClassName()).toLowerCase(Locale.ROOT);
         String lowerText = txt.toLowerCase(Locale.ROOT);
 
-        if (txt.contains(signature)) {
+        String signatureLower = signature.toLowerCase(Locale.ROOT);
+        String hint = safe(node.getHintText()).toLowerCase(Locale.ROOT);
+        if (lowerText.contains(signatureLower)
+                || desc.contains(signatureLower)
+                || hint.contains(signatureLower)) {
             s.captionMatched = true;
             if (node.isEditable() || cls.endsWith("edittext")
                     || id.contains("caption")) s.captionEditable = true;
