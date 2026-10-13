@@ -69,6 +69,7 @@ public class WakeDispatchActivity extends Activity {
             .putBoolean("dispatch_started",true)
             .putString("expected_caption",caption)
             .putString("expected_phone",phone)
+            .putLong("share_started_at",System.currentTimeMillis())
             .putLong("armed_until",System.currentTimeMillis()+95000L)
             .putBoolean("click_in_progress",false)
             .putString("state","WAITING_WHATSAPP_PREVIEW").commit();
