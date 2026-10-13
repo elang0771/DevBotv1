@@ -1,6 +1,7 @@
 package com.elang.reminderwakesend;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
@@ -22,6 +23,15 @@ public class WakeDispatchActivity extends Activity {
         setShowWhenLocked(true);
         setTurnScreenOn(true);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // A posted full-screen notification can cause WakeActivity to reopen
+        // each time WhatsApp changes its window. Consume it immediately.
+        NotificationManager nm=getSystemService(NotificationManager.class);
+        if(nm!=null) nm.cancel(6006);
+        if(Diag.prefs(this).getBoolean("dispatch_started",false)) {
+            Diag.log(this,"DUPLICATE_WAKE_SUPPRESSED");
+            finish();
+            return;
+        }
         LinearLayout root=new LinearLayout(this);
         root.setBackgroundColor(Color.rgb(7,123,77));
         root.setGravity(Gravity.CENTER);
@@ -56,6 +66,7 @@ public class WakeDispatchActivity extends Activity {
         if(mime==null||!mime.startsWith("image/"))mime="image/jpeg";
         Uri uri=Uri.parse(photo);
         Diag.prefs(this).edit()
+            .putBoolean("dispatch_started",true)
             .putString("expected_caption",caption)
             .putString("expected_phone",phone)
             .putLong("armed_until",System.currentTimeMillis()+95000L)
@@ -73,6 +84,9 @@ public class WakeDispatchActivity extends Activity {
         try {
             startActivity(share);
             Diag.log(this,"WHATSAPP_START_ACTIVITY_ACCEPTED");
+            // Return ownership of the screen to WhatsApp; keep no lingering
+            // Wake Activity that might steal focus and trigger another share.
+            finish();
         }catch(Exception e){
             Diag.disarm(this,"WHATSAPP_START_FAILED:"+e.getClass().getSimpleName());
         }
