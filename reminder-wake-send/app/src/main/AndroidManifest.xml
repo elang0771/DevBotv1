@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <queries><package android:name="com.whatsapp"/></queries>
-    <application android:label="Reminder WakeSend V0.9 TEST"
+    <application android:label="Reminder WakeSend V1.0 TEST"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:allowBackup="false" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true">
