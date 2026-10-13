@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.elang.reminderwakesend'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.elang.reminderwakesend'
+        minSdk 28
+        targetSdk 35
+        versionCode 7
+        versionName '0.7-send-detection-test'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
