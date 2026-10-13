@@ -1,4 +1,4 @@
-name: Build Reminder Wake Send V0.9
+name: Build Reminder Wake Send V1.0
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -33,13 +33,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Build V0.9 APK
+      - name: Build V1.0 APK
         working-directory: reminder-wake-send
         run: gradle :app:assembleDebug --stacktrace
       - name: Verify APK produced
         run: test -s reminder-wake-send/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: reminder-wake-send-v09-debug
+          name: reminder-wake-send-v10-debug
           path: reminder-wake-send/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
