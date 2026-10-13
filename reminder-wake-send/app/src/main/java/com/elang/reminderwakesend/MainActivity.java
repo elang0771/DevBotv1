@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         int p=dp(17);root.setPadding(p,p,p,p);scroll.addView(root);
         TextView title=new TextView(this);
-        title.setText("REMINDER V0.6 • WAKE + WA SEND TEST");title.setTextSize(23);
+        title.setText("REMINDER V0.7 • WAKE + WA SEND TEST");title.setTextSize(23);
         root.addView(title);
         TextView intro=new TextView(this);
         intro.setText("TES TERPISAH: layar mati → alarm → layar bangun → buka WhatsApp → tunggu caption → auto tap Send.\nUji hanya ke nomor sendiri terlebih dahulu. Jangan sentuh HP selama tes.");
