@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         int p=dp(17);root.setPadding(p,p,p,p);scroll.addView(root);
         TextView title=new TextView(this);
-        title.setText("REMINDER V0.8 • WAKE + WA SEND TEST");title.setTextSize(23);
+        title.setText("REMINDER V0.9 • WAKE + WA SEND TEST");title.setTextSize(23);
         root.addView(title);
         TextView intro=new TextView(this);
         intro.setText("TES TERPISAH: layar mati → alarm → layar bangun → buka WhatsApp → tunggu caption → auto tap Send.\nUji hanya ke nomor sendiri terlebih dahulu. Jangan sentuh HP selama tes.");
@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
         // One active scheduled job in this isolated test, never queues duplicate sends.
         PendingIntent existing=alarmPi(PendingIntent.FLAG_NO_CREATE);
         if(existing!=null){((AlarmManager)getSystemService(ALARM_SERVICE)).cancel(existing);existing.cancel();}
-        Diag.prefs(this).edit().putLong("armed_until",0L).putString("phone",n)
+        Diag.prefs(this).edit().putLong("armed_until",0L).putBoolean("dispatch_started",false).putString("phone",n)
             .putString("caption",c).putString("photo",photo.toString())
             .putString("state","SCHEDULED").commit();
         Intent i=new Intent(this,AlarmReceiver.class);
