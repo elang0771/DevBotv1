@@ -1,3 +1,3 @@
 <resources>
-    <string name="accessibility_description">Saat tes V0.8 dijadwalkan, layanan ini memeriksa caption dan pratinjau WhatsApp secara lokal sebelum mencoba tombol Kirim. Screenshot tidak disimpan atau dikirim ke server. Tidak berjalan di luar jendela tes.</string>
+    <string name="accessibility_description">Saat tes V0.9 dijadwalkan, layanan ini memeriksa caption dan pratinjau WhatsApp secara lokal sebelum mencoba tombol Kirim. Screenshot tidak disimpan atau dikirim ke server. Tidak berjalan di luar jendela tes.</string>
 </resources>
