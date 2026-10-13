@@ -32,6 +32,10 @@ public class AutoSendAccessibilityService extends AccessibilityService {
     private boolean seenLogged;
     private boolean captionLogged;
     private boolean previewLogged;
+    private boolean captionFallbackLogged;
+    private long firstVisualAt;
+    private long firstVisualJob;
+    private int firstVisualX, firstVisualY;
     private String lastVisualFailure="UNSPECIFIED";
 
     @Override
@@ -51,6 +55,9 @@ public class AutoSendAccessibilityService extends AccessibilityService {
             captionLogged = false;
             previewLogged = false;
             lastWaitLog = 0L;
+            captionFallbackLogged = false;
+            firstVisualAt = 0L;
+            firstVisualJob = 0L;
         }
         if (!seenLogged) {
             Diag.log(this, "WHATSAPP_ACCESSIBILITY_OBSERVED");
@@ -88,6 +95,18 @@ public class AutoSendAccessibilityService extends AccessibilityService {
         scan(root, signature, snapshot, 0);
 
         if (!snapshot.captionMatched) {
+            // WhatsApp's custom-drawn caption may be visible but absent from
+            // the accessibility node tree. Wait briefly for it to populate,
+            // then perform a stricter two-frame LOCAL media-composer check.
+            long sentAt = prefs.getLong("share_started_at", 0L);
+            if (sentAt > 0L && System.currentTimeMillis() - sentAt > 3500L) {
+                if (!captionFallbackLogged) {
+                    Diag.log(this, "CAPTION_NOT_EXPOSED_START_VISUAL_VERIFICATION");
+                    captionFallbackLogged = true;
+                }
+                inspectScreenshotForMediaSend(signature, deadline);
+                return;
+            }
             waitAndRetry("WAITING_SCHEDULED_CAPTION");
             return;
         }
@@ -302,9 +321,23 @@ public class AutoSendAccessibilityService extends AccessibilityService {
                         }
                         Snapshot refreshed = new Snapshot();
                         scan(current, signature, refreshed, 0);
+                        // Caption is sometimes drawn outside the accessible
+                        // tree. Only allow visual fallback for an active,
+                        // fresh, single-recipient share initiated by this app.
                         if (!refreshed.captionMatched) {
-                            waitAndRetry("SCREENSHOT_CAPTION_NOT_VISIBLE");
-                            return;
+                            SharedPreferences p = Diag.prefs(AutoSendAccessibilityService.this);
+                            long sentAt = p.getLong("share_started_at", 0L);
+                            boolean trustedShare = p.getBoolean("dispatch_started", false)
+                                    && p.getLong("armed_until", 0L) == jobDeadline
+                                    && sentAt > 0L
+                                    && System.currentTimeMillis() - sentAt < 95000L
+                                    && p.getString("expected_caption", "").startsWith(signature)
+                                    && p.getString("expected_phone", "").length() >= 10
+                                    && p.getString("photo", null) != null;
+                            if (!trustedShare) {
+                                waitAndRetry("CAPTION_INACCESSIBLE_SHARE_CONTEXT_NOT_VERIFIED");
+                                return;
+                            }
                         }
                         GreenTarget target = detectMediaSend(bitmap);
                         if (target == null) {
@@ -321,8 +354,29 @@ public class AutoSendAccessibilityService extends AccessibilityService {
                         wm.getDefaultDisplay().getRealSize(real);
                         int px = Math.round(target.x * ((float)real.x / bitmap.getWidth()));
                         int py = Math.round(target.y * ((float)real.y / bitmap.getHeight()));
+                        long now = System.currentTimeMillis();
+                        if (firstVisualJob != jobDeadline
+                                || firstVisualAt == 0L
+                                || now - firstVisualAt > 4000L
+                                || Math.abs(px - firstVisualX) > 25
+                                || Math.abs(py - firstVisualY) > 25) {
+                            firstVisualAt = now;
+                            firstVisualJob = jobDeadline;
+                            firstVisualX = px;
+                            firstVisualY = py;
+                            Diag.log(AutoSendAccessibilityService.this,
+                                    "REAL_SEND_BUTTON_FIRST_VISUAL_MATCH");
+                            handler.postDelayed(() ->
+                                    inspectScreenshotForMediaSend(signature, jobDeadline), 750L);
+                            return;
+                        }
                         Diag.log(AutoSendAccessibilityService.this,
-                                "SEND_BUTTON_VISUALLY_LOCATED");
+                                "REAL_SEND_BUTTON_SECOND_VISUAL_MATCH");
+                        if (!refreshed.captionMatched) {
+                            Diag.log(AutoSendAccessibilityService.this,
+                                    "CAPTION_UI_NOT_EXPOSED_USING_VERIFIED_SCHEDULED_SHARE");
+                        }
+                        firstVisualAt = 0L;
                         performVerifiedGesture(px, py);
                     } catch (Exception err) {
                         waitAndRetry("SCREENSHOT_ANALYSIS_ERROR:" +
@@ -347,71 +401,116 @@ public class AutoSendAccessibilityService extends AccessibilityService {
         GreenTarget(int x, int y) { this.x = x; this.y = y; }
     }
 
+    /**
+     * Detect only the outermost WhatsApp composer control, not a green arrow
+     * contained INSIDE the photo being shared. Candidate components must
+     * be round, in the bottom-right tray, on a dark toolbar background.
+     *
+     * Based on the actual screenshot from this test: at least one previous
+     * WhatsApp Send button is embedded IN the uploaded image, above the
+     * real button. Scanning all green pixels as one bounding box fails.
+     */
     private GreenTarget detectMediaSend(Bitmap bmp) {
-        lastVisualFailure="UNKNOWN_VISUAL_FAILURE";
+        lastVisualFailure="NO_VALID_BOTTOM_SEND_COMPONENT";
         final int w=bmp.getWidth(), h=bmp.getHeight();
-        if (w < 300 || h < 550) {
+        if (w<300 || h<550) {
             lastVisualFailure="SCREENSHOT_TOO_SMALL";
             return null;
         }
-        // Media images may fill the entire top area (confirmed by V0.8
-        // screenshot). A fixed dark probe at 17.5% wrongly rejects them.
-        // Inspect the bottom media-editor controls strip instead, ABOVE
-        // Android navigation and outside the actual green Send button.
-        boolean darkToolbar=false;
-        for (float yy : new float[]{0.785f,0.805f,0.825f,0.845f,0.865f}) {
-            int darkPixels=0;
-            for (float xx : new float[]{0.12f,0.28f,0.47f,0.66f,0.78f}) {
-                int c=bmp.getPixel(Math.round(w*xx),Math.round(h*yy));
-                if (Color.red(c)<95 && Color.green(c)<100 && Color.blue(c)<105) darkPixels++;
+        int step=Math.max(2,w/320);
+        int left=Math.round(w*0.77f), right=Math.round(w*0.99f);
+        int top=Math.round(h*0.78f), bottom=Math.round(h*0.965f);
+        int cols=(right-left)/step+1, rows=(bottom-top)/step+1;
+        boolean[] green=new boolean[cols*rows];
+        boolean[] seen=new boolean[green.length];
+        int[] queue=new int[green.length];
+        int greenTotal=0;
+        for (int row=0; row<rows; row++) {
+            int y=top+row*step;
+            for (int col=0; col<cols; col++) {
+                int x=left+col*step;
+                if (x>=w || y>=h)continue;
+                int pixel=bmp.getPixel(x,y);
+                int red=Color.red(pixel),g=Color.green(pixel),blue=Color.blue(pixel);
+                boolean match=g>115 && g>red*1.45f && g>blue*1.20f
+                        && red<155 && blue<185;
+                green[row*cols+col]=match;
+                if(match)greenTotal++;
             }
-            if (darkPixels>=4) { darkToolbar=true; break; }
         }
-        if (!darkToolbar) {
-            lastVisualFailure="MEDIA_EDITOR_BOTTOM_STRIP_NOT_DETECTED";
+        if (greenTotal<20) {
+            lastVisualFailure="NO_GREEN_SEND_CANDIDATES";
             return null;
         }
 
-        // Locate the actual green circular send button, not an inferred
-        // fixed position. Use relative ROI to support phone/tablet sizes.
-        int minX=w,minY=h,maxX=-1,maxY=-1,count=0;
-        int step=Math.max(2,w/260);
-        for (int y=(int)(h*0.77f);y<(int)(h*0.965f);y+=step) {
-            for (int x=(int)(w*0.79f);x<(int)(w*0.99f);x+=step) {
-                int c=bmp.getPixel(x,y);
-                int red=Color.red(c),green=Color.green(c),blue=Color.blue(c);
-                if (green>115 && green>red*1.45f && green>blue*1.20f
-                        && red<155 && blue<185) {
-                    count++;
-                    if(x<minX)minX=x;
-                    if(x>maxX)maxX=x;
-                    if(y<minY)minY=y;
-                    if(y>maxY)maxY=y;
+        GreenTarget best=null;
+        int bestY=-1;
+        int groups=0;
+        for(int start=0;start<green.length;start++) {
+            if(!green[start] || seen[start])continue;
+            groups++;
+            int head=0,tail=0;
+            queue[tail++]=start;
+            seen[start]=true;
+            int n=0,minX=w,minY=h,maxX=0,maxY=0;
+            while(head<tail) {
+                int idx=queue[head++];
+                int row=idx/cols, col=idx%cols;
+                int px=left+col*step,py=top+row*step;
+                n++;
+                if(px<minX)minX=px;
+                if(px>maxX)maxX=px;
+                if(py<minY)minY=py;
+                if(py>maxY)maxY=py;
+                for(int dy=-1;dy<=1;dy++) {
+                    int nr=row+dy;
+                    if(nr<0 || nr>=rows)continue;
+                    for(int dx=-1;dx<=1;dx++) {
+                        int nc=col+dx;
+                        if(nc<0 || nc>=cols)continue;
+                        int next=nr*cols+nc;
+                        if(green[next] && !seen[next]) {
+                            seen[next]=true;
+                            queue[tail++]=next;
+                        }
+                    }
                 }
             }
+
+            if(n<24)continue;
+            int bw=maxX-minX,bh=maxY-minY;
+            float ratio=(float)bw/Math.max(1,bh);
+            int cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+            // The REAL button sits outside the photo, near bottom navigation.
+            // This intentionally excludes earlier Send buttons embedded in
+            // a screenshot photo or illustration.
+            if(cx < (int)(w*0.82f) || cy < (int)(h*0.87f)
+                    || cy > (int)(h*0.965f)
+                    || bw < w*0.055f || bw > w*0.19f
+                    || bh < h*0.026f || bh > h*0.105f
+                    || ratio<0.7f || ratio>1.4f)continue;
+            // Use pixels OUTSIDE the button: regular WA photo composer shows
+            // a nearly black controls strip, unlike a bright image.
+            int dark=0;
+            for(float xx: new float[]{0.17f,0.34f,0.52f,0.69f}) {
+                int c=bmp.getPixel(Math.min(w-1,Math.round(w*xx)),Math.min(h-1,cy));
+                if(Color.red(c)<100 && Color.green(c)<105
+                        && Color.blue(c)<110)dark++;
+            }
+            if(dark<3)continue;
+            // If both the uploaded image and current UI contain green Send
+            // buttons, always choose the LAST qualifying component.
+            if(cy>bestY) {
+                bestY=cy;
+                best=new GreenTarget(cx,cy);
+            }
         }
-        if (count<24) {
-            lastVisualFailure="GREEN_BUTTON_NOT_FOUND";
-            return null;
-        }
-        int bw=maxX-minX,bh=maxY-minY;
-        if (bw<w*0.045f || bw>w*0.19f
-                || bh<h*0.022f || bh>h*0.12f) {
-            lastVisualFailure="GREEN_BUTTON_SIZE_MISMATCH";
-            return null;
-        }
-        float ratio=(float)bw/Math.max(1,bh);
-        if (ratio<0.65f||ratio>1.50f) {
-            lastVisualFailure="GREEN_BUTTON_NOT_ROUND";
-            return null;
-        }
-        int cx=(minX+maxX)/2,cy=(minY+maxY)/2;
-        if (cx<w*0.82f || cy<h*0.81f || cy>h*0.965f) {
-            lastVisualFailure="GREEN_BUTTON_POSITION_MISMATCH";
+        if(best==null) {
+            lastVisualFailure="GREEN_COMPONENTS_REJECTED:"+groups;
             return null;
         }
         lastVisualFailure="NONE";
-        return new GreenTarget(cx,cy);
+        return best;
     }
 
     private void performVerifiedGesture(int x,int y) {
