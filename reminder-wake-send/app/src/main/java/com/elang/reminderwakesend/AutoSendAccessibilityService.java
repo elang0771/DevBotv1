@@ -32,6 +32,7 @@ public class AutoSendAccessibilityService extends AccessibilityService {
     private boolean seenLogged;
     private boolean captionLogged;
     private boolean previewLogged;
+    private String lastVisualFailure="UNSPECIFIED";
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -307,7 +308,7 @@ public class AutoSendAccessibilityService extends AccessibilityService {
                         }
                         GreenTarget target = detectMediaSend(bitmap);
                         if (target == null) {
-                            waitAndRetry("SCREENSHOT_MEDIA_SEND_NOT_VERIFIED");
+                            waitAndRetry("SCREENSHOT_MEDIA_SEND_NOT_VERIFIED:" + lastVisualFailure);
                             return;
                         }
                         if (!previewLogged) {
@@ -347,17 +348,29 @@ public class AutoSendAccessibilityService extends AccessibilityService {
     }
 
     private GreenTarget detectMediaSend(Bitmap bmp) {
+        lastVisualFailure="UNKNOWN_VISUAL_FAILURE";
         final int w=bmp.getWidth(), h=bmp.getHeight();
-        if (w < 300 || h < 550) return null;
-        // Media editor in the screenshot is black above the photo. A normal
-        // WhatsApp chat screen has a header instead, even in light theme.
-        int dark=0;
-        int ty=Math.round(h*0.175f);
-        for (float xx : new float[]{0.16f,0.34f,0.64f,0.85f}) {
-            int c=bmp.getPixel(Math.round(w*xx),ty);
-            if (Color.red(c)<31 && Color.green(c)<31 && Color.blue(c)<31) dark++;
+        if (w < 300 || h < 550) {
+            lastVisualFailure="SCREENSHOT_TOO_SMALL";
+            return null;
         }
-        if (dark < 3) return null;
+        // Media images may fill the entire top area (confirmed by V0.8
+        // screenshot). A fixed dark probe at 17.5% wrongly rejects them.
+        // Inspect the bottom media-editor controls strip instead, ABOVE
+        // Android navigation and outside the actual green Send button.
+        boolean darkToolbar=false;
+        for (float yy : new float[]{0.785f,0.805f,0.825f,0.845f,0.865f}) {
+            int darkPixels=0;
+            for (float xx : new float[]{0.12f,0.28f,0.47f,0.66f,0.78f}) {
+                int c=bmp.getPixel(Math.round(w*xx),Math.round(h*yy));
+                if (Color.red(c)<95 && Color.green(c)<100 && Color.blue(c)<105) darkPixels++;
+            }
+            if (darkPixels>=4) { darkToolbar=true; break; }
+        }
+        if (!darkToolbar) {
+            lastVisualFailure="MEDIA_EDITOR_BOTTOM_STRIP_NOT_DETECTED";
+            return null;
+        }
 
         // Locate the actual green circular send button, not an inferred
         // fixed position. Use relative ROI to support phone/tablet sizes.
@@ -377,14 +390,27 @@ public class AutoSendAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        if (count<24) return null;
+        if (count<24) {
+            lastVisualFailure="GREEN_BUTTON_NOT_FOUND";
+            return null;
+        }
         int bw=maxX-minX,bh=maxY-minY;
         if (bw<w*0.045f || bw>w*0.19f
-                || bh<h*0.022f || bh>h*0.12f) return null;
+                || bh<h*0.022f || bh>h*0.12f) {
+            lastVisualFailure="GREEN_BUTTON_SIZE_MISMATCH";
+            return null;
+        }
         float ratio=(float)bw/Math.max(1,bh);
-        if (ratio<0.65f||ratio>1.50f) return null;
+        if (ratio<0.65f||ratio>1.50f) {
+            lastVisualFailure="GREEN_BUTTON_NOT_ROUND";
+            return null;
+        }
         int cx=(minX+maxX)/2,cy=(minY+maxY)/2;
-        if (cx<w*0.82f || cy<h*0.81f || cy>h*0.965f) return null;
+        if (cx<w*0.82f || cy<h*0.81f || cy>h*0.965f) {
+            lastVisualFailure="GREEN_BUTTON_POSITION_MISMATCH";
+            return null;
+        }
+        lastVisualFailure="NONE";
         return new GreenTarget(cx,cy);
     }
 
