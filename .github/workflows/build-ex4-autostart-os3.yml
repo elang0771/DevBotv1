@@ -36,17 +36,37 @@ jobs:
           chmod +x mksapkg-OS3
           file mksapkg-OS3
           ldd mksapkg-OS3 || true
-      - name: Build WDMyCloudEX4 binary
+      - name: Build signed WDMyCloudEX4 binary
         shell: bash
         run: |
           set -euo pipefail
+          # OS3 tool uses Blowfish-CBC, disabled by default in OpenSSL 3.
+          # Enable only for this build step; never change the runner system config.
+          cat > "$RUNNER_TEMP/openssl-os3.cnf" <<'EOF'
+          openssl_conf = openssl_init
+          [openssl_init]
+          providers = provider_sect
+          [provider_sect]
+          default = default_sect
+          legacy = legacy_sect
+          [default_sect]
+          activate = 1
+          [legacy_sect]
+          activate = 1
+          EOF
+          export OPENSSL_CONF="$RUNNER_TEMP/openssl-os3.cnf"
+          printf 'os3-test\n' | openssl enc -bf-cbc -salt -pass pass:build-check > "$RUNNER_TEMP/os3-cipher-test"
+          test -s "$RUNNER_TEMP/os3-cipher-test"
           cd ex4-autostart/EX4PHPAutostart
-          ../../mksapkg-OS3 -E -s -m WDMyCloudEX4
-          find .. -maxdepth 1 -type f -print
+          ../../mksapkg-OS3 -E -s -m WDMyCloudEX4 2>&1 | tee "$RUNNER_TEMP/mksapkg.log"
+          ! grep -q 'Error setting cipher' "$RUNNER_TEMP/mksapkg.log"
+          test -s apkg.sign
+          test "$(wc -c < apkg.sign)" -gt 8
           mkdir -p ../../dist
-          find .. -maxdepth 1 -type f -name '*EX4PHPAutostart*.bin*' -exec cp -v '{}' ../../dist/ \;
-          test "$(find ../../dist -maxdepth 1 -type f -name '*.bin*' | wc -l)" -eq 1
-          test "$(wc -c < ../../dist/*.bin*)" -gt 500
+          mapfile -t originals < <(find .. -maxdepth 1 -type f -name 'WDMyCloudEX4_EX4PHPAutostart_*.bin*')
+          test "${#originals[@]}" -eq 1
+          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin
+          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin)" -gt 500
           sha256sum ../../dist/*
           file ../../dist/*
       - name: Upload OS3 build output for review
