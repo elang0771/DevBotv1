@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           cd ex4-autostart/EX4PHPAutostart
-          for f in ./*.sh; do sh -n "$f"; done
+          for f in ./*.sh; do sh -n "$f"; test -x "$f"; done
           grep -qx 'Package: EX4PHPAutostart' apkg.rc
           grep -qx 'AddonIndexPage: index.html' apkg.rc
           grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
@@ -69,6 +69,31 @@ jobs:
           test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin)" -gt 500
           sha256sum ../../dist/*
           file ../../dist/*
+      - name: Independently inspect OS3 archive and executable bits
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip, io, tarfile
+          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin')
+          b=p.read_bytes()
+          assert b[:8] == b'LightniZ', 'WD legacy header missing'
+          offset=b.find(b'\x1f\x8b\x08',128)
+          assert offset > 0, 'compressed archive payload missing'
+          with tarfile.open(fileobj=io.BytesIO(gzip.decompress(b[offset:])),mode='r:') as t:
+              files={m.name:m for m in t.getmembers()}
+              prefix='EX4PHPAutostart/'
+              for name in ('apkg.rc','apkg.xml','apkg.sign','start.sh','install.sh','init.sh','stop.sh','before_apkg.sh','preinst.sh','clean.sh','remove.sh','web/index.html'):
+                  assert prefix+name in files, 'missing '+name
+              for name in ('start.sh','install.sh','init.sh','stop.sh','before_apkg.sh','preinst.sh','clean.sh','remove.sh'):
+                  assert files[prefix+name].mode & 0o111, 'not executable: '+name
+              sign=t.extractfile(prefix+'apkg.sign').read()
+              assert sign.startswith(b'Salted__') and len(sign)>30, 'OS3 Blowfish signature invalid'
+              xml=t.extractfile(prefix+'apkg.xml').read()
+              assert b'<name>EX4PHPAutostart</name>' in xml, 'app identity mismatch'
+          print('PASS: WD OS3 header, signed archive, metadata, and executable scripts')
+          PY
       - name: Upload OS3 build output for review
         uses: actions/upload-artifact@v4
         with:
