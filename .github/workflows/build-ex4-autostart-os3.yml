@@ -22,7 +22,7 @@ jobs:
           grep -qx 'Package: EX4PHPAutostart' apkg.rc
           grep -qx 'AddonIndexPage: index.html' apkg.rc
           grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
-          ! grep -ER 'curl.+\\|.*sh|wget.+\\|.*sh' ./*.sh
+          ! grep -En '(curl|wget).*[|][[:space:]]*sh([[:space:]]|$)' ./*.sh
       - name: Install required runtime libraries
         run: |
           sudo apt-get update -qq
