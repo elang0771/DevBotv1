@@ -1,0 +1,57 @@
+name: Build EX4 PHP Autostart OS3
+on:
+  push:
+    branches:
+      - build/ex4-autostart-os3-20261017
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: WDMyCloudEX4 OS3 package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source scripts and expected model
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ex4-autostart/EX4PHPAutostart
+          for f in ./*.sh; do sh -n "$f"; done
+          grep -qx 'Package: EX4PHPAutostart' apkg.rc
+          grep -qx 'AddonIndexPage: index.html' apkg.rc
+          grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
+          ! grep -ER 'curl.+\\|.*sh|wget.+\\|.*sh' ./*.sh
+      - name: Install required runtime libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxml2 libssl3 file
+      - name: Obtain pinned WDCommunity OS3 packer
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://raw.githubusercontent.com/WDCommunity/wdpksrc/1b414413b5acec3e008cf6b6e29d9d6404379b7f/mksapkg-OS3' -o mksapkg-OS3
+          chmod +x mksapkg-OS3
+          file mksapkg-OS3
+          ldd mksapkg-OS3 || true
+      - name: Build WDMyCloudEX4 binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ex4-autostart/EX4PHPAutostart
+          ../../mksapkg-OS3 -E -s -m WDMyCloudEX4
+          find .. -maxdepth 1 -type f -print
+          mkdir -p ../../dist
+          find .. -maxdepth 1 -type f -name '*EX4PHPAutostart*.bin*' -exec cp -v '{}' ../../dist/ \;
+          test "$(find ../../dist -maxdepth 1 -type f -name '*.bin*' | wc -l)" -eq 1
+          test "$(wc -c < ../../dist/*.bin*)" -gt 500
+          sha256sum ../../dist/*
+          file ../../dist/*
+      - name: Upload OS3 build output for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.0-CANDIDATE
+          path: ex4-autostart/dist/*.bin*
+          if-no-files-found: error

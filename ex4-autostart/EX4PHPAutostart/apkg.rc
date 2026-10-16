@@ -1,0 +1,19 @@
+Package: EX4PHPAutostart
+Version: 1.0.0
+Packager: EX4 Local
+Email:
+Homepage:
+Description: Autostart for existing WD My Cloud EX4 LAN PHP 8090 service; no PHP installation.
+Icon: icon.png
+AddonShowName: EX4 PHP Autostart
+AddonIndexPage: index.html
+AddonUsedPort:
+InstDepend:
+InstConflict:
+StartDepend:
+StartConflict:
+CenterType: 1
+UserControl: 1
+MinFWVer:
+MaxFWVer:
+IndividualFlag: 0
