@@ -23,6 +23,23 @@ jobs:
           grep -qx 'AddonIndexPage: index.html' apkg.rc
           grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
           ! grep -En '(curl|wget).*[|][[:space:]]*sh([[:space:]]|$)' ./*.sh
+      - name: Simulate WD pre-created application folder
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ex4-autostart/EX4PHPAutostart
+          sudo mkdir -p /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart
+          sudo chmod 777 /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart
+          sudo ./install.sh "$PWD" /mnt/HD/HD_a2/Nas_Prog
+          sudo test -f /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/start.sh
+          sudo test -x /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/start.sh
+          sudo test ! -e /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/EX4PHPAutostart
+          # A second call must refuse to overwrite existing application files.
+          if sudo ./install.sh "$PWD" /mnt/HD/HD_a2/Nas_Prog; then
+            echo "ERROR: unsafe install overwrite allowed"
+            exit 1
+          fi
+          echo "PASS: WD pre-created directory install and overwrite protection"
       - name: Install required runtime libraries
         run: |
           sudo apt-get update -qq
@@ -65,8 +82,8 @@ jobs:
           mkdir -p ../../dist
           mapfile -t originals < <(find .. -maxdepth 1 -type f -name 'WDMyCloudEX4_EX4PHPAutostart_*.bin*')
           test "${#originals[@]}" -eq 1
-          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin
-          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin)" -gt 500
+          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin
+          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin)" -gt 500
           sha256sum ../../dist/*
           file ../../dist/*
       - name: Independently inspect OS3 archive and executable bits
@@ -76,7 +93,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import gzip, io, tarfile
-          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin')
+          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin')
           b=p.read_bytes()
           assert b[:8] == b'LightniZ', 'WD legacy header missing'
           offset=b.find(b'\x1f\x8b\x08',128)
@@ -97,6 +114,6 @@ jobs:
       - name: Upload OS3 build output for review
         uses: actions/upload-artifact@v4
         with:
-          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.0-CANDIDATE
-          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.0.bin
+          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.1-CANDIDATE
+          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin
           if-no-files-found: error
