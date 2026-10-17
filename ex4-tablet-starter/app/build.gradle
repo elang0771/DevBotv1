@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.application'
+}
+android {
+  namespace 'com.elang.ex4phpstarter'
+  compileSdk 35
+  defaultConfig {
+    applicationId 'com.elang.ex4phpstarter'
+    minSdk 26
+    targetSdk 35
+    versionCode 1
+    versionName '1.0.0'
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+  buildTypes {
+    release { minifyEnabled false }
+  }
+  packaging { resources { excludes += ['META-INF/versions/**'] } }
+}
+dependencies {
+  implementation 'com.github.mwiede:jsch:0.2.25'
+  implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+}
