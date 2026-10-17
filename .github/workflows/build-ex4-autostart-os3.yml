@@ -23,23 +23,34 @@ jobs:
           grep -qx 'AddonIndexPage: index.html' apkg.rc
           grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
           ! grep -En '(curl|wget).*[|][[:space:]]*sh([[:space:]]|$)' ./*.sh
-      - name: Simulate WD pre-created application folder
+      - name: Simulate EXACT WD OS3 install arguments and uninstall
         shell: bash
         run: |
           set -euo pipefail
-          cd ex4-autostart/EX4PHPAutostart
-          sudo mkdir -p /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart
-          sudo chmod 777 /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart
-          sudo ./install.sh "$PWD" /mnt/HD/HD_a2/Nas_Prog
-          sudo test -f /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/start.sh
-          sudo test -x /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/start.sh
-          sudo test ! -e /mnt/HD/HD_a2/Nas_Prog/EX4PHPAutostart/EX4PHPAutostart
-          # A second call must refuse to overwrite existing application files.
-          if sudo ./install.sh "$PWD" /mnt/HD/HD_a2/Nas_Prog; then
-            echo "ERROR: unsafe install overwrite allowed"
-            exit 1
-          fi
-          echo "PASS: WD pre-created directory install and overwrite protection"
+          APPDIR="$PWD/ex4-autostart/EX4PHPAutostart"
+          NAS=/mnt/HD/HD_a2/Nas_Prog
+          STAGE="$NAS/_install"
+          DEST="$NAS/EX4PHPAutostart"
+          sudo mkdir -p "$STAGE" "$DEST"
+          sudo cp -R "$APPDIR"/. "$STAGE"/
+          sudo chmod 777 "$DEST"
+          # WD SDK: $1=Nas_Prog/_install, $2=Nas_Prog/EX4PHPAutostart
+          sudo "$STAGE/install.sh" "$STAGE" "$DEST"
+          sudo test -x "$DEST/start.sh"
+          sudo test -s "$DEST/.install-ok"
+          sudo test ! -e "$DEST/EX4PHPAutostart"
+          sudo test ! -e "$DEST/_install"
+          test "$(sudo stat -c '%a' "$DEST/start.sh")" = 700
+          # No overwrite, wrong paths or siblings accepted
+          if sudo "$STAGE/install.sh" "$STAGE" "$DEST"; then echo UNSAFE_REINSTALL; exit 1; fi
+          if sudo "$STAGE/install.sh" "$STAGE" "$NAS"; then echo UNSAFE_ROOT; exit 1; fi
+          if sudo "$STAGE/remove.sh" "$NAS"; then echo UNSAFE_REMOVE; exit 1; fi
+          # Uninstall precisely app dir and re-install
+          sudo "$DEST/remove.sh" "$DEST"
+          sudo test ! -e "$DEST"
+          sudo "$STAGE/install.sh" "$STAGE" "$DEST"
+          sudo test -x "$DEST/start.sh"
+          echo 'PASS: actual WD OS3 args, precreated dir, permissions, uninstall and reinstall'
       - name: Install required runtime libraries
         run: |
           sudo apt-get update -qq
@@ -82,8 +93,8 @@ jobs:
           mkdir -p ../../dist
           mapfile -t originals < <(find .. -maxdepth 1 -type f -name 'WDMyCloudEX4_EX4PHPAutostart_*.bin*')
           test "${#originals[@]}" -eq 1
-          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin
-          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin)" -gt 500
+          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.2.bin
+          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.2.bin)" -gt 500
           sha256sum ../../dist/*
           file ../../dist/*
       - name: Independently inspect OS3 archive and executable bits
@@ -93,7 +104,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import gzip, io, tarfile
-          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin')
+          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.2.bin')
           b=p.read_bytes()
           assert b[:8] == b'LightniZ', 'WD legacy header missing'
           offset=b.find(b'\x1f\x8b\x08',128)
@@ -114,6 +125,6 @@ jobs:
       - name: Upload OS3 build output for review
         uses: actions/upload-artifact@v4
         with:
-          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.1-CANDIDATE
-          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.1.bin
+          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.2-CANDIDATE
+          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.2.bin
           if-no-files-found: error
