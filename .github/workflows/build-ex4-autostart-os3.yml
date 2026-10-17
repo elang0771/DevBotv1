@@ -23,40 +23,41 @@ jobs:
           grep -qx 'AddonIndexPage: index.html' apkg.rc
           grep -q '303378853743b92cef0e3ae561bd430e783cdddb646cdab4b1e39f18451d5a2a' start.sh
           ! grep -En '(curl|wget).*[|][[:space:]]*sh([[:space:]]|$)' ./*.sh
-      - name: Simulate firmware-created apkg.xml and WD install/uninstall
+      - name: Simulate proven WDCommunity OS3 parameter contract
         shell: bash
         run: |
           set -euo pipefail
           APPDIR="$PWD/ex4-autostart/EX4PHPAutostart"
           NAS=/mnt/HD/HD_a2/Nas_Prog
-          STAGE="$NAS/_install"
+          STAGE="$NAS/_install/EX4PHPAutostart"
           DEST="$NAS/EX4PHPAutostart"
           sudo mkdir -p "$STAGE" "$DEST"
           sudo cp -R "$APPDIR"/. "$STAGE"/
           sudo chmod 777 "$DEST"
-          # Reproduce EXACT NAS failure observed: folder already has apkg.xml.
+          # WD NAS observed app dir contains only firmware-produced apkg.xml.
           printf '<config><apkg><item><name>EX4PHPAutostart</name></item></apkg></config>\n' | sudo tee "$DEST/apkg.xml" >/dev/null
-          sudo "$STAGE/install.sh" "$STAGE" "$DEST"
+          # WD OS3 examples: mv/cp $1 $2, $2 is Nas_Prog parent.
+          sudo "$STAGE/install.sh" "$STAGE" "$NAS"
           sudo test -x "$DEST/start.sh"
-          sudo test -s "$DEST/.install-ok"
+          sudo test -f "$DEST/.install-ok"
           sudo test ! -e "$DEST/EX4PHPAutostart"
           test "$(sudo stat -c '%a' "$DEST/start.sh")" = 700
-          # No re-install overwrite, no wrong directory, no other files.
-          if sudo "$STAGE/install.sh" "$STAGE" "$DEST"; then echo UNSAFE_REINSTALL; exit 1; fi
-          if sudo "$STAGE/install.sh" "$STAGE" "$NAS"; then echo UNSAFE_ROOT; exit 1; fi
+          # Fail closed for incorrect params and existing app.
+          if sudo "$STAGE/install.sh" "$STAGE" "$DEST"; then echo WRONG_CONTRACT_ACCEPTED; exit 1; fi
+          if sudo "$STAGE/install.sh" "$STAGE" "$NAS"; then echo UNSAFE_REINSTALL; exit 1; fi
           if sudo "$STAGE/remove.sh" "$NAS"; then echo UNSAFE_REMOVE; exit 1; fi
-          # Can uninstall exact app and reinstall when destination is empty.
           sudo "$DEST/remove.sh" "$DEST"
           sudo test ! -e "$DEST"
-          sudo "$STAGE/install.sh" "$STAGE" "$DEST"
+          # Re-install from empty folder is also supported.
+          sudo "$STAGE/install.sh" "$STAGE" "$NAS"
           sudo test -x "$DEST/start.sh"
           sudo "$DEST/remove.sh" "$DEST"
-          # Refuse precreated directory with unrelated content, preserving it.
+          # Reject pre-existing unrelated app data, preserving it.
           sudo mkdir "$DEST"
-          echo 'sibling must remain' | sudo tee "$DEST/unknown.file" >/dev/null
-          if sudo "$STAGE/install.sh" "$STAGE" "$DEST"; then echo UNSAFE_EXTRA; exit 1; fi
-          sudo grep -qx 'sibling must remain' "$DEST/unknown.file"
-          echo 'PASS: real observed apkg.xml-only case, empty case, uninstall, and safety guards'
+          echo 'preserve' | sudo tee "$DEST/other.data" >/dev/null
+          if sudo "$STAGE/install.sh" "$STAGE" "$NAS"; then echo UNSAFE_OVERWRITE; exit 1; fi
+          sudo grep -qx preserve "$DEST/other.data"
+          echo 'PASS: WDCommunity OS3 parent-dir contract + real EX4 apkg.xml state'
       - name: Install required runtime libraries
         run: |
           sudo apt-get update -qq
@@ -99,8 +100,8 @@ jobs:
           mkdir -p ../../dist
           mapfile -t originals < <(find .. -maxdepth 1 -type f -name 'WDMyCloudEX4_EX4PHPAutostart_*.bin*')
           test "${#originals[@]}" -eq 1
-          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.3.bin
-          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.3.bin)" -gt 500
+          cp -- "${originals[0]}" ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.4.bin
+          test "$(wc -c < ../../dist/WDMyCloudEX4_EX4PHPAutostart_1.0.4.bin)" -gt 500
           sha256sum ../../dist/*
           file ../../dist/*
       - name: Independently inspect OS3 archive and executable bits
@@ -110,7 +111,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import gzip, io, tarfile
-          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.3.bin')
+          p=Path('dist/WDMyCloudEX4_EX4PHPAutostart_1.0.4.bin')
           b=p.read_bytes()
           assert b[:8] == b'LightniZ', 'WD legacy header missing'
           offset=b.find(b'\x1f\x8b\x08',128)
@@ -131,6 +132,6 @@ jobs:
       - name: Upload OS3 build output for review
         uses: actions/upload-artifact@v4
         with:
-          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.3-CANDIDATE
-          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.3.bin
+          name: EX4PHPAutostart-WDMyCloudEX4-OS3-v1.0.4-CANDIDATE
+          path: dist/WDMyCloudEX4_EX4PHPAutostart_1.0.4.bin
           if-no-files-found: error

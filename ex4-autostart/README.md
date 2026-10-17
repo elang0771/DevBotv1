@@ -1,6 +1,14 @@
-# EX4 PHP Autostart OS3 v1.0.0 — Build candidate
-This isolated branch only creates a WDMyCloudEX4 OS3 app package. It does not install anything on the NAS, change Dashboard 2.3.1, touch PHP 8090 or NAS config.
+# WD My Cloud EX4 PHP Autostart OS3
+## Installer contract correction — v1.0.4 candidate
+WDCommunity reference OS3 package scripts `wdpk/entware/install.sh`,
+`wdpk/nzbget/install.sh`, and `wdpk/myshellscript/common.sh`
+use `$1` as the extracted app folder, and `$2` as the **Nas_Prog parent directory**.
+The prior v1.0.2 and v1.0.3 installer incorrectly expected the second argument
+to be the final application directory. The NAS observation after install was
+`Nas_Prog/EX4PHPAutostart/apkg.xml` only.
 
-The package calls the root-private known SHA256 of **Boot v4.1**. It never launches scripts from SMB shares. Stop/disable does **not** stop the existing PHP server. WD Apps manager controls future boot behavior; reboot verification is still required.
+This new candidate adds a GitHub Actions simulation for the correct contract and
+the firmware-created `apkg.xml` folder. It does not touch the working PHP 8090,
+Dashboard v2.3.1, APC, or NAS configs.
 
-Source is published in a dedicated build branch and not merged to DevBotv1 main. It contains no passwords or tokens.
+**Never claim autostart PASS until manually checked on the NAS after reboot.**
